@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Where will you IndiGo today?</title>
+  <link rel="stylesheet" href="style.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700;800&display=swap" rel="stylesheet" />
+</head>
+<body>
+  <!-- Three.js Globe Canvas (fixed background) -->
+  <canvas id="globe-canvas"></canvas>
+
+  <!-- Scroll Container -->
+  <div id="scroll-container">
+
+    <!-- Section 1: Hero -->
+    <section class="section hero-section" id="hero">
+      <div class="hero-content">
+        <div class="indigo-logo">
+          <span class="logo-in">in</span><span class="logo-di">di</span><span class="logo-go">Go</span>
+        </div>
+        <h1 class="hero-title">
+          <span class="line line-1">Where will you</span>
+          <span class="line line-2 highlight">IndiGo</span>
+          <span class="line line-3">today?</span>
+        </h1>
+        <p class="hero-subtitle">Explore the world through an immersive journey</p>
+        <div class="scroll-indicator">
+          <div class="mouse">
+            <div class="wheel"></div>
+          </div>
+          <span>Scroll to explore</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 2: Discover Routes -->
+    <section class="section routes-section" id="routes">
+      <div class="section-content">
+        <h2 class="section-title fade-in">Discover Our Routes</h2>
+        <p class="section-desc fade-in">Connecting 100+ destinations across the globe</p>
+        <div class="route-cards">
+          <div class="route-card fade-in" data-delay="0">
+            <div class="card-icon">&#9992;</div>
+            <h3>Delhi</h3>
+            <p class="route-tag">Hub City</p>
+            <p class="route-detail">Gateway to Northern India &amp; beyond</p>
+          </div>
+          <div class="route-card fade-in" data-delay="100">
+            <div class="card-icon">&#127961;</div>
+            <h3>Mumbai</h3>
+            <p class="route-tag">Financial Capital</p>
+            <p class="route-detail">City of dreams, coast to coast</p>
+          </div>
+          <div class="route-card fade-in" data-delay="200">
+            <div class="card-icon">&#127796;</div>
+            <h3>Bangkok</h3>
+            <p class="route-tag">International</p>
+            <p class="route-detail">Southeast Asia's vibrant heart</p>
+          </div>
+          <div class="route-card fade-in" data-delay="300">
+            <div class="card-icon">&#127963;</div>
+            <h3>Istanbul</h3>
+            <p class="route-tag">International</p>
+            <p class="route-detail">Where East meets West</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 3: Stats Parallax -->
+    <section class="section stats-section" id="stats">
+      <div class="section-content">
+        <h2 class="section-title fade-in">The IndiGo Network</h2>
+        <div class="stats-grid">
+          <div class="stat-item fade-in" data-delay="0">
+            <span class="stat-number" data-target="1900">0</span>
+            <span class="stat-label">Daily Flights</span>
+          </div>
+          <div class="stat-item fade-in" data-delay="100">
+            <span class="stat-number" data-target="100">0</span><span class="stat-plus">+</span>
+            <span class="stat-label">Destinations</span>
+          </div>
+          <div class="stat-item fade-in" data-delay="200">
+            <span class="stat-number" data-target="300">0</span><span class="stat-plus">+</span>
+            <span class="stat-label">Aircraft Fleet</span>
+          </div>
+          <div class="stat-item fade-in" data-delay="300">
+            <span class="stat-number" data-target="100">0</span><span class="stat-plus">M+</span>
+            <span class="stat-label">Passengers Yearly</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 4: Experience -->
+    <section class="section experience-section" id="experience">
+      <div class="section-content">
+        <h2 class="section-title fade-in">Your Journey Awaits</h2>
+        <p class="section-desc fade-in">Every flight is an experience crafted with care</p>
+        <div class="experience-features">
+          <div class="feature fade-in" data-delay="0">
+            <div class="feature-ring">
+              <svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" fill="none" stroke="url(#grad1)" stroke-width="2" stroke-dasharray="283" stroke-dashoffset="283" class="ring-circle"/><defs><linearGradient id="grad1"><stop offset="0%" stop-color="#1A237E"/><stop offset="100%" stop-color="#4FC3F7"/></linearGradient></defs></svg>
+            </div>
+            <h3>On-Time Performance</h3>
+            <p>Industry-leading punctuality you can count on</p>
+          </div>
+          <div class="feature fade-in" data-delay="150">
+            <div class="feature-ring">
+              <svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" fill="none" stroke="url(#grad2)" stroke-width="2" stroke-dasharray="283" stroke-dashoffset="283" class="ring-circle"/><defs><linearGradient id="grad2"><stop offset="0%" stop-color="#4FC3F7"/><stop offset="100%" stop-color="#00E5FF"/></linearGradient></defs></svg>
+            </div>
+            <h3>Affordable Fares</h3>
+            <p>Making air travel accessible to everyone</p>
+          </div>
+          <div class="feature fade-in" data-delay="300">
+            <div class="feature-ring">
+              <svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" fill="none" stroke="url(#grad3)" stroke-width="2" stroke-dasharray="283" stroke-dashoffset="283" class="ring-circle"/><defs><linearGradient id="grad3"><stop offset="0%" stop-color="#00E5FF"/><stop offset="100%" stop-color="#1A237E"/></linearGradient></defs></svg>
+            </div>
+            <h3>Hassle-Free</h3>
+            <p>Seamless booking to boarding experience</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 5: CTA -->
+    <section class="section cta-section" id="cta">
+      <div class="section-content">
+        <h2 class="cta-title fade-in">Ready to Explore?</h2>
+        <p class="cta-desc fade-in">Your next adventure is just a click away</p>
+        <button class="cta-button fade-in" data-delay="200">
+          Book Your Flight
+          <span class="btn-glow"></span>
+        </button>
+      </div>
+    </section>
+
+  </div>
+
+  <!-- Airplane that follows scroll -->
+  <div id="airplane-tracker">
+    <svg viewBox="0 0 50 50" width="40" height="40">
+      <path d="M25 5 L30 20 L45 25 L30 30 L25 45 L20 30 L5 25 L20 20 Z" fill="#4FC3F7" opacity="0.9"/>
+    </svg>
+  </div>
+
+  <!-- Scripts -->
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+    }
+  }
+  </script>
+  <script type="module" src="main.js"></script>
+</body>
+</html>
