@@ -3,7 +3,7 @@
  * Uses Canvas-based computer vision: edge detection, color clustering, texture analysis.
  */
 
-import { createDefaultProfile } from './StyleProfile';
+import { createDefaultProfile } from './StyleProfile.js';
 
 const ANALYSIS_SIZE = 256; // downscale for performance
 

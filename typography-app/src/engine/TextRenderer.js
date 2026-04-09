@@ -3,7 +3,7 @@
  * Renders styled glyphs with texture, distortion, and effects.
  */
 
-import { GlyphGenerator } from './GlyphGenerator';
+import { GlyphGenerator } from './GlyphGenerator.js';
 
 export class TextRenderer {
   constructor(canvas) {
