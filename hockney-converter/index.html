@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Hockney Joiner - Panography Style Converter</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <div class="app">
+    <header>
+      <h1>Hockney Joiner</h1>
+      <p class="subtitle">Transform any image into a David Hockney-style photographic collage</p>
+    </header>
+
+    <main>
+      <!-- Upload Area -->
+      <div id="upload-area" class="upload-area">
+        <div class="upload-content">
+          <svg class="upload-icon" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M28 8H12a4 4 0 00-4 4v24a4 4 0 004 4h24a4 4 0 004-4V20L28 8z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M28 8v12h12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M20 28l-4 4m0 0l4 4m-4-4h16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" transform="rotate(-90 24 30)"/>
+          </svg>
+          <p class="upload-text">Drop an image here or click to upload</p>
+          <p class="upload-hint">Supports JPG, PNG, WebP</p>
+        </div>
+        <input type="file" id="file-input" accept="image/*" hidden />
+      </div>
+
+      <!-- Controls -->
+      <div id="controls" class="controls hidden">
+        <h2>Adjust Settings</h2>
+        <div class="controls-grid">
+          <div class="control-group">
+            <label for="grid-cols">Grid Columns</label>
+            <div class="range-row">
+              <input type="range" id="grid-cols" min="3" max="12" value="6" />
+              <span id="grid-cols-val" class="range-val">6</span>
+            </div>
+          </div>
+          <div class="control-group">
+            <label for="grid-rows">Grid Rows</label>
+            <div class="range-row">
+              <input type="range" id="grid-rows" min="3" max="12" value="5" />
+              <span id="grid-rows-val" class="range-val">5</span>
+            </div>
+          </div>
+          <div class="control-group">
+            <label for="rotation">Max Rotation (&deg;)</label>
+            <div class="range-row">
+              <input type="range" id="rotation" min="0" max="15" value="4" step="0.5" />
+              <span id="rotation-val" class="range-val">4</span>
+            </div>
+          </div>
+          <div class="control-group">
+            <label for="scatter">Scatter Amount</label>
+            <div class="range-row">
+              <input type="range" id="scatter" min="0" max="30" value="8" />
+              <span id="scatter-val" class="range-val">8</span>
+            </div>
+          </div>
+          <div class="control-group">
+            <label for="overlap">Tile Overlap</label>
+            <div class="range-row">
+              <input type="range" id="overlap" min="0" max="40" value="15" />
+              <span id="overlap-val" class="range-val">15</span>
+            </div>
+          </div>
+          <div class="control-group">
+            <label for="color-shift">Color Variation</label>
+            <div class="range-row">
+              <input type="range" id="color-shift" min="0" max="30" value="10" />
+              <span id="color-shift-val" class="range-val">10</span>
+            </div>
+          </div>
+          <div class="control-group">
+            <label for="border-width">Border Width</label>
+            <div class="range-row">
+              <input type="range" id="border-width" min="1" max="10" value="3" />
+              <span id="border-width-val" class="range-val">3</span>
+            </div>
+          </div>
+          <div class="control-group">
+            <label for="shadow-blur">Shadow Intensity</label>
+            <div class="range-row">
+              <input type="range" id="shadow-blur" min="0" max="20" value="6" />
+              <span id="shadow-blur-val" class="range-val">6</span>
+            </div>
+          </div>
+        </div>
+        <div class="controls-actions">
+          <button id="btn-generate" class="btn btn-primary">Generate Joiner</button>
+          <button id="btn-randomize" class="btn btn-secondary">Randomize</button>
+        </div>
+      </div>
+
+      <!-- Preview -->
+      <div id="preview-section" class="preview-section hidden">
+        <div class="preview-header">
+          <h2>Result</h2>
+          <div class="preview-actions">
+            <button id="btn-download" class="btn btn-primary">Download Image</button>
+            <button id="btn-new" class="btn btn-secondary">New Image</button>
+          </div>
+        </div>
+        <div class="preview-container">
+          <canvas id="output-canvas"></canvas>
+        </div>
+      </div>
+
+      <!-- Loading -->
+      <div id="loading" class="loading hidden">
+        <div class="spinner"></div>
+        <p>Creating your Hockney joiner...</p>
+      </div>
+    </main>
+
+    <footer>
+      <p>Inspired by David Hockney's photographic joiners</p>
+    </footer>
+  </div>
+
+  <script type="module" src="/app.js"></script>
+</body>
+</html>
