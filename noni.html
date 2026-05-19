@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NONI · Hand Dots</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; }
+    body { background: #16161a; overflow: hidden; font-family: system-ui, sans-serif; color: #fff; }
+
+    #scene { position: fixed; inset: 0; z-index: 1; }
+
+    #webcam {
+      position: fixed; top: 16px; right: 16px;
+      width: 168px; border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.08);
+      transform: scaleX(-1); z-index: 10; opacity: 0.85;
+    }
+
+    #cursor {
+      position: fixed; width: 16px; height: 16px; border-radius: 50%;
+      background: rgba(240,238,230,0.85); pointer-events: none; z-index: 15;
+      transform: translate(-50%,-50%); display: none;
+      box-shadow: 0 0 14px rgba(240,238,230,0.5);
+      transition: width .08s, height .08s;
+    }
+
+    #status {
+      position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%);
+      z-index: 20; padding: 8px 22px; background: rgba(0,0,0,0.35);
+      color: rgba(255,255,255,0.65); border-radius: 20px; font-size: 12px;
+      letter-spacing: .5px; transition: opacity .3s; backdrop-filter: blur(4px);
+    }
+
+    #loading {
+      position: fixed; inset: 0; z-index: 100; background: #16161a;
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: center; gap: 18px; transition: opacity .6s;
+    }
+    #loading h1 { font-size: 40px; font-weight: 200; letter-spacing: 14px; color: #e8e6df; }
+    #loading p { color: #6a6a72; font-size: 13px; letter-spacing: 1px; }
+    .spinner {
+      width: 30px; height: 30px; border: 2px solid #2c2c33;
+      border-top-color: #9a9aa2; border-radius: 50%;
+      animation: spin .7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    #countdown-overlay {
+      position: fixed; inset: 0; z-index: 50;
+      display: none; flex-direction: column;
+      align-items: center; justify-content: center;
+      pointer-events: none; gap: 44px;
+    }
+    #countdown-overlay.active { display: flex; }
+    #countdown-number { font-size: 130px; font-weight: 200; color: #ece9e1; }
+    @keyframes countPop {
+      0% { transform: scale(.5); opacity: 0; }
+      50% { transform: scale(1.1); opacity: 1; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    #countdown-number span { animation: countPop .4s ease-out; display: block; }
+
+    #gesture-guide { display: flex; gap: 56px; opacity: .92; }
+    .gesture-item { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+    .gesture-icon { font-size: 50px; line-height: 1; filter: grayscale(.25); }
+    .gesture-label {
+      font-size: 11px; color: rgba(255,255,255,0.5); text-align: center;
+      letter-spacing: .5px; line-height: 1.4;
+    }
+
+    #hint {
+      position: fixed; top: 42%; left: 50%; transform: translate(-50%,-50%);
+      z-index: 25; font-size: 26px; font-weight: 200; color: rgba(255,255,255,0.28);
+      letter-spacing: 6px; pointer-events: none; transition: opacity .6s; text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div id="loading">
+    <h1>NONI</h1>
+    <div class="spinner"></div>
+    <p>starting camera</p>
+  </div>
+
+  <canvas id="scene"></canvas>
+  <video id="webcam" autoplay playsinline></video>
+  <div id="cursor"></div>
+  <div id="hint" style="display:none;">point to draw</div>
+
+  <div id="countdown-overlay">
+    <div id="gesture-guide">
+      <div class="gesture-item">
+        <div class="gesture-icon">&#x261D;&#xFE0F;</div>
+        <div class="gesture-label">Point<br>to draw</div>
+      </div>
+      <div class="gesture-item">
+        <div class="gesture-icon">&#x1F590;&#xFE0F;</div>
+        <div class="gesture-label">Open palm<br>to rotate</div>
+      </div>
+      <div class="gesture-item">
+        <div class="gesture-icon">&#x270A;</div>
+        <div class="gesture-label">Fist<br>to clear</div>
+      </div>
+    </div>
+    <div id="countdown-number"></div>
+  </div>
+
+  <div id="status"></div>
+
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.167/build/three.module.js"
+    }
+  }
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4/hands.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3/camera_utils.min.js"></script>
+
+  <script type="module">
+    import * as THREE from 'three';
+
+    // ── Palettes (bg + vivid dot colors) ──
+    const COLOR_COMBOS = [
+      { bg: '#3a4a44', dots: ['#5a8f4a','#7db85a','#a0d468','#bce672','#6da050'] }, // forest
+      { bg: '#4a4036', dots: ['#e8c89a','#d4a870','#f0d8a8','#dbb888','#f5e0b8'] }, // sand
+      { bg: '#36404a', dots: ['#a0b8d0','#8098b8','#b8d0e8','#90a8c0','#c8ddf0'] }, // steel
+      { bg: '#48343a', dots: ['#d89aaa','#e8b0c0','#d0889a','#f0c0d0','#c07888'] }, // rose
+      { bg: '#3e3a48', dots: ['#b8a0c8','#c8b0d8','#d0b8e0','#b098c0','#a088b0'] }, // lavender
+      { bg: '#2e4242', dots: ['#88c0c0','#98d0d0','#a8d8d8','#80b8b8','#70a8a8'] }, // teal
+      { bg: '#4a3a30', dots: ['#e0a888','#f0c0a0','#e8b898','#f8d0b0','#d09068'] }, // terracotta
+      { bg: '#34404a', dots: ['#90b0d0','#a8c8e8','#b0d0e8','#88a8c8','#7898b8'] }, // cornflower
+    ];
+    let lastCombo = -1;
+    function pickCombo() {
+      let i = Math.floor(Math.random() * COLOR_COMBOS.length);
+      if (i === lastCombo) i = (i + 1) % COLOR_COMBOS.length;
+      lastCombo = i;
+      return COLOR_COMBOS[i];
+    }
+
+    // ── Three.js setup ──
+    const canvas = document.getElementById('scene');
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+    renderer.setSize(innerWidth, innerHeight);
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(55, innerWidth / innerHeight, 0.1, 500);
+
+    // Camera orbits the cloud (palm controls this) — keeps dots billboarded correctly.
+    const ORBIT_R = 26;
+    let azim = 0, polar = Math.PI / 2;            // current spherical
+    let azimT = 0, polarT = Math.PI / 2;          // target spherical
+    function placeCamera() {
+      const sp = Math.sin(polar);
+      camera.position.set(
+        ORBIT_R * sp * Math.sin(azim),
+        ORBIT_R * Math.cos(polar),
+        ORBIT_R * sp * Math.cos(azim)
+      );
+      camera.lookAt(0, 0, 0);
+    }
+    placeCamera();
+
+    // ── Dot field ──
+    const DOT_COUNT = 3200;
+    const FIELD_R = 9;
+    const MAX_CAPTURE = Math.floor(DOT_COUNT * 0.72);
+
+    const geo = new THREE.CircleGeometry(1, 18);
+    const mat = new THREE.MeshBasicMaterial();
+    const mesh = new THREE.InstancedMesh(geo, mat, DOT_COUNT);
+    mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    const colorArr = new Float32Array(DOT_COUNT * 3);
+    mesh.instanceColor = new THREE.InstancedBufferAttribute(colorArr, 3);
+    scene.add(mesh);
+
+    const dummy = new THREE.Object3D();
+    const tmpC = new THREE.Color();
+    const dots = [];
+
+    function randInSphere(r) {
+      let x, y, z;
+      do { x = Math.random()*2-1; y = Math.random()*2-1; z = Math.random()*2-1; }
+      while (x*x + y*y + z*z > 1);
+      return new THREE.Vector3(x*r, y*r*0.8, z*r);
+    }
+
+    let combo = pickCombo();
+    function applyCombo(c) {
+      const bg = new THREE.Color(c.bg).multiplyScalar(0.55);
+      renderer.setClearColor(bg, 1);
+      document.body.style.background = '#' + bg.getHexString();
+    }
+    applyCombo(combo);
+
+    function dotColors(c) {
+      const bg = new THREE.Color(c.bg).multiplyScalar(0.55);
+      const vivid = new THREE.Color(c.dots[Math.floor(Math.random() * c.dots.length)]);
+      const free = vivid.clone().lerp(bg, 0.62);   // muted while floating
+      return { free: [free.r, free.g, free.b], draw: [vivid.r, vivid.g, vivid.b] };
+    }
+
+    for (let i = 0; i < DOT_COUNT; i++) {
+      const home = randInSphere(FIELD_R);
+      const pos = home.clone();
+      const col = dotColors(combo);
+      dots.push({
+        home, pos,
+        target: new THREE.Vector3(),
+        captured: false,
+        baseScale: 0.05 + Math.random() * 0.13,
+        freeC: col.free, drawC: col.draw,
+        col: col.free.slice(),
+        sc: 0.05 + Math.random() * 0.13,
+        phase: Math.random() * Math.PI * 2,
+        sp: 0.5 + Math.random() * 1.1,
+        ampX: 0.5 + Math.random() * 1.0,
+        ampY: 0.5 + Math.random() * 1.0,
+        ampZ: 0.5 + Math.random() * 1.0,
+      });
+      colorArr[i*3] = col.free[0]; colorArr[i*3+1] = col.free[1]; colorArr[i*3+2] = col.free[2];
+    }
+    mesh.instanceColor.needsUpdate = true;
+
+    let capturedCount = 0;
+
+    // ── Drawing: pull nearest free dots toward a 3D point ──
+    const drawPt = new THREE.Vector3();
+    const camDir = new THREE.Vector3();
+    function screenToWorld(px, py) {
+      const ndcX = (px / innerWidth) * 2 - 1;
+      const ndcY = -((py / innerHeight) * 2 - 1);
+      drawPt.set(ndcX, ndcY, 0.5).unproject(camera);
+      camDir.copy(drawPt).sub(camera.position).normalize();
+      const dist = camera.position.length();        // origin plane
+      return drawPt.copy(camera.position).addScaledVector(camDir, dist);
+    }
+
+    function captureNear(P, batch) {
+      if (capturedCount >= MAX_CAPTURE) return;
+      // selection of `batch` nearest free dots
+      const best = [];
+      for (let i = 0; i < DOT_COUNT; i++) {
+        const d = dots[i];
+        if (d.captured) continue;
+        const d2 = d.pos.distanceToSquared(P);
+        if (best.length < batch) {
+          best.push({ i, d2 });
+          if (best.length === batch) best.sort((a,b) => b.d2 - a.d2);
+        } else if (d2 < best[0].d2) {
+          best[0] = { i, d2 };
+          best.sort((a,b) => b.d2 - a.d2);
+        }
+      }
+      for (const { i } of best) {
+        const d = dots[i];
+        d.captured = true;
+        d.target.set(
+          P.x + (Math.random()-0.5)*0.7,
+          P.y + (Math.random()-0.5)*0.7,
+          P.z + (Math.random()-0.5)*0.7
+        );
+        capturedCount++;
+        if (capturedCount >= MAX_CAPTURE) break;
+      }
+    }
+
+    function clearAll() {
+      for (const d of dots) {
+        if (d.captured) { d.captured = false; d.home.copy(d.pos); }
+      }
+      capturedCount = 0;
+      combo = pickCombo();
+      applyCombo(combo);
+      for (let i = 0; i < DOT_COUNT; i++) {
+        const c = dotColors(combo);
+        dots[i].freeC = c.free; dots[i].drawC = c.draw;
+      }
+      azimT = 0; polarT = Math.PI / 2;
+      hint.style.display = 'block';
+      requestAnimationFrame(() => hint.style.opacity = '0.55');
+      status.textContent = 'point to draw';
+    }
+
+    // ── Animation ──
+    const clock = new THREE.Clock();
+    function animate() {
+      requestAnimationFrame(animate);
+      const t = clock.getElapsedTime();
+
+      // gentle idle drift of the orbit + smooth follow of palm target
+      azimT += 0.0006;
+      azim  += (azimT  - azim)  * 0.045;
+      polar += (polarT - polar) * 0.045;
+      placeCamera();
+
+      const swirl = t * 0.07;
+      const cs = Math.cos(swirl), sn = Math.sin(swirl);
+
+      for (let i = 0; i < DOT_COUNT; i++) {
+        const d = dots[i];
+        let want;
+        if (d.captured) {
+          want = d.target;
+          d.pos.lerp(want, 0.14);
+        } else {
+          // swirl the home, then organic per-dot wander
+          const hx = d.home.x * cs - d.home.z * sn;
+          const hz = d.home.x * sn + d.home.z * cs;
+          const wx = hx + Math.sin(t * d.sp + d.phase) * d.ampX;
+          const wy = d.home.y + Math.cos(t * d.sp * 0.9 + d.phase * 1.3) * d.ampY;
+          const wz = hz + Math.sin(t * d.sp * 1.1 + d.phase * 0.7) * d.ampZ;
+          d.pos.x += (wx - d.pos.x) * 0.05;
+          d.pos.y += (wy - d.pos.y) * 0.05;
+          d.pos.z += (wz - d.pos.z) * 0.05;
+        }
+
+        // color + scale ease toward state
+        const tc = d.captured ? d.drawC : d.freeC;
+        const tsc = d.captured ? d.baseScale * 1.7 : d.baseScale;
+        d.col[0] += (tc[0] - d.col[0]) * 0.08;
+        d.col[1] += (tc[1] - d.col[1]) * 0.08;
+        d.col[2] += (tc[2] - d.col[2]) * 0.08;
+        d.sc += (tsc - d.sc) * 0.1;
+        colorArr[i*3] = d.col[0]; colorArr[i*3+1] = d.col[1]; colorArr[i*3+2] = d.col[2];
+
+        const breathe = 1 + Math.sin(t * d.sp * 0.6 + d.phase * 2) * 0.12;
+        dummy.position.copy(d.pos);
+        dummy.scale.setScalar(d.sc * breathe);
+        dummy.quaternion.copy(camera.quaternion);  // billboard
+        dummy.updateMatrix();
+        mesh.setMatrixAt(i, dummy.matrix);
+      }
+      mesh.instanceMatrix.needsUpdate = true;
+      mesh.instanceColor.needsUpdate = true;
+      renderer.render(scene, camera);
+    }
+    animate();
+
+    window.addEventListener('resize', () => {
+      camera.aspect = innerWidth / innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(innerWidth, innerHeight);
+    });
+
+    // ── Hand tracking ──
+    const video = document.getElementById('webcam');
+    const cursor = document.getElementById('cursor');
+    const status = document.getElementById('status');
+    const hint = document.getElementById('hint');
+    const overlayEl = document.getElementById('countdown-overlay');
+    const countNumEl = document.getElementById('countdown-number');
+
+    let canDraw = false;
+    let pointFrames = 0, pointReady = false, fistFrames = 0;
+    let lastDrawX = -999, lastDrawY = -999;
+    const POINT_HOLD = 24;
+
+    function gesture(lm) {
+      const tips = [4,8,12,16,20], pips = [3,6,10,14,18];
+      const ext = [];
+      ext.push(Math.abs(lm[4].x - lm[2].x) > 0.05);
+      for (let i = 1; i < 5; i++) ext.push(lm[tips[i]].y < lm[pips[i]].y);
+      const [, idx, mid, ring, pin] = ext;
+      if (Math.hypot(lm[4].x - lm[8].x, lm[4].y - lm[8].y) < 0.05) return 'pinch';
+      if (!idx && !mid && !ring && !pin) return 'fist';
+      if (idx && !mid && !ring && !pin) return 'point';
+      if (idx && mid && ring && pin) return 'open';
+      return 'other';
+    }
+
+    const hands = new Hands({
+      locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4/${f}`
+    });
+    hands.setOptions({ maxNumHands: 1, modelComplexity: 1, minDetectionConfidence: 0.7, minTrackingConfidence: 0.6 });
+
+    hands.onResults(r => {
+      if (!canDraw) return;
+      if (!r.multiHandLandmarks?.length) {
+        cursor.style.display = 'none';
+        pointFrames = 0; pointReady = false; fistFrames = 0;
+        return;
+      }
+      const lm = r.multiHandLandmarks[0];
+      const ix = (1 - lm[8].x) * innerWidth;
+      const iy = lm[8].y * innerHeight;
+      cursor.style.display = 'block';
+      cursor.style.left = ix + 'px';
+      cursor.style.top = iy + 'px';
+
+      const g = gesture(lm);
+
+      if (g === 'point') {
+        fistFrames = 0;
+        if (!pointReady) {
+          pointFrames++;
+          const pct = Math.min(pointFrames / POINT_HOLD, 1);
+          cursor.style.width = cursor.style.height = (16 + pct * 12) + 'px';
+          cursor.style.opacity = String(0.4 + pct * 0.6);
+          if (pointFrames >= POINT_HOLD) {
+            pointReady = true;
+            cursor.style.width = cursor.style.height = '16px';
+            hint.style.opacity = '0';
+            setTimeout(() => hint.style.display = 'none', 600);
+          }
+          status.textContent = 'hold steady…';
+          return;
+        }
+        const moved = Math.hypot(ix - lastDrawX, iy - lastDrawY);
+        if (moved > 5 || lastDrawX < -900) {
+          captureNear(screenToWorld(ix, iy), 16);
+          lastDrawX = ix; lastDrawY = iy;
+        }
+        status.textContent = capturedCount >= MAX_CAPTURE ? 'open palm to rotate' : 'drawing…';
+      } else if (g === 'open') {
+        fistFrames = 0;
+        azimT = (0.5 - lm[9].x) * Math.PI * 2.4;
+        polarT = THREE.MathUtils.clamp(lm[9].y * Math.PI, 0.35, Math.PI - 0.35);
+        status.textContent = 'rotating · fist to clear';
+      } else if (g === 'fist') {
+        fistFrames++;
+        cursor.style.width = cursor.style.height = '16px';
+        if (fistFrames > 18) { clearAll(); fistFrames = 0; }
+        else status.textContent = 'hold fist to clear…';
+      } else {
+        fistFrames = 0;
+      }
+    });
+
+    // ── Countdown ──
+    function runCountdown() {
+      return new Promise(resolve => {
+        const steps = ['3', '2', '1', 'Go'];
+        let i = 0;
+        overlayEl.classList.add('active');
+        (function next() {
+          if (i >= steps.length) {
+            setTimeout(() => { overlayEl.classList.remove('active'); countNumEl.innerHTML = ''; }, 700);
+            resolve(); return;
+          }
+          countNumEl.innerHTML = `<span>${steps[i]}</span>`;
+          i++; setTimeout(next, 1000);
+        })();
+      });
+    }
+
+    // ── Init camera ──
+    (async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 } });
+        video.srcObject = stream;
+        await video.play();
+        const cam = new Camera(video, {
+          onFrame: async () => { await hands.send({ image: video }); },
+          width: 640, height: 480
+        });
+        await cam.start();
+        const ld = document.getElementById('loading');
+        ld.style.opacity = '0';
+        setTimeout(async () => {
+          ld.style.display = 'none';
+          await runCountdown();
+          canDraw = true;
+          hint.style.display = 'block';
+          requestAnimationFrame(() => hint.style.opacity = '0.55');
+          status.textContent = 'point to draw';
+        }, 500);
+      } catch (e) {
+        // Camera unavailable: the moving-dots field still runs. Mouse fallback.
+        const ld = document.getElementById('loading');
+        ld.querySelector('p').textContent = 'no camera — drag to draw, scroll to rotate';
+        setTimeout(() => { ld.style.opacity = '0'; setTimeout(() => ld.style.display = 'none', 600); }, 1400);
+        let down = false;
+        addEventListener('mousedown', () => down = true);
+        addEventListener('mouseup', () => down = false);
+        addEventListener('mousemove', e => { if (down) captureNear(screenToWorld(e.clientX, e.clientY), 16); });
+        addEventListener('wheel', e => { azimT += e.deltaY * 0.002; });
+        status.textContent = 'drag to draw · scroll to rotate · C to clear';
+      }
+    })();
+
+    addEventListener('keydown', e => {
+      if (e.key === 'c' || e.key === 'C') clearAll();
+    });
+  </script>
+</body>
+</html>
