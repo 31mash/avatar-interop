@@ -541,6 +541,19 @@ button.cal-cell:hover { background: var(--primary-soft); }
 }
 .notice.n-warn { background: var(--warn-bg); border-color: var(--warn-bd); color: var(--warn); }
 
+/* sign-in gate */
+body.signed-out .sidebar, body.signed-out .topbar { display: none; }
+body.signed-out .view { padding: 0; max-width: none; }
+.signin { min-height: 100dvh; display: grid; place-items: center; padding: 24px; background: var(--bg); }
+.signin-card { width: 100%; max-width: 400px; padding: 28px; }
+.signin-brand { display: flex; align-items: center; gap: 10px; margin-bottom: 22px; }
+.signin-card h1 { font-size: 20px; margin-bottom: 6px; }
+.signin-sub { font-size: 13px; color: var(--ink-soft); margin-bottom: 16px; }
+.signin-divider { display: flex; align-items: center; gap: 10px; color: var(--ink-mute); font-size: 12px; margin: 18px 0 12px; }
+.signin-divider::before, .signin-divider::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+.signin-demos { display: flex; flex-wrap: wrap; gap: 7px; }
+.signin-note { font-size: 11.5px; color: var(--ink-mute); margin-top: 16px; }
+
 .sr-only {
   position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
   overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;

@@ -25,13 +25,13 @@
     return {
       version: 1,
       users: [
-        { id: 'u1', name: 'Dana Whitfield', role: 'boss', dept: 'Leadership', title: 'Studio Director', active: true },
-        { id: 'u2', name: 'Marcus Chen', role: 'pm', dept: 'Production', title: 'Project Manager', active: true },
-        { id: 'u3', name: 'Priya Nair', role: 'hr', dept: 'People Ops', title: 'HR & Coordination', active: true },
-        { id: 'u4', name: 'Jordan Lee', role: 'team', dept: 'Avatars', title: 'Avatar Engineer', active: true },
-        { id: 'u5', name: 'Sofia Ramos', role: 'team', dept: 'Wearables', title: '3D Wearables Artist', active: true },
-        { id: 'u6', name: 'Theo Okafor', role: 'team', dept: 'Animation', title: 'Technical Animator', active: true },
-        { id: 'u7', name: 'Mia Tanaka', role: 'team', dept: 'Web', title: 'Creative Developer', active: true }
+        { id: 'u1', name: 'Dana Whitfield', email: 'dana@potntial.in', role: 'boss', dept: 'Leadership', title: 'Studio Director', active: true },
+        { id: 'u2', name: 'Marcus Chen', email: 'marcus@potntial.in', role: 'pm', dept: 'Production', title: 'Project Manager', active: true },
+        { id: 'u3', name: 'Priya Nair', email: 'priya@potntial.in', role: 'hr', dept: 'People Ops', title: 'HR & Coordination', active: true },
+        { id: 'u4', name: 'Jordan Lee', email: 'jordan@potntial.in', role: 'team', dept: 'Avatars', title: 'Avatar Engineer', active: true },
+        { id: 'u5', name: 'Sofia Ramos', email: 'sofia@potntial.in', role: 'team', dept: 'Wearables', title: '3D Wearables Artist', active: true },
+        { id: 'u6', name: 'Theo Okafor', email: 'theo@potntial.in', role: 'team', dept: 'Animation', title: 'Technical Animator', active: true },
+        { id: 'u7', name: 'Mia Tanaka', email: 'mia@potntial.in', role: 'team', dept: 'Web', title: 'Creative Developer', active: true }
       ],
 
       projects: [

@@ -42,6 +42,15 @@
     const [ds, ts] = stamp.split('T');
     return `${fmt(ds)}, ${ts || ''}`.trim().replace(/,\s*$/, '');
   };
+  /* calendar-export helpers */
+  const icsEsc = (s) => String(s || '').replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n');
+  const icsDT = (iso, time) => iso.replace(/-/g, '') + 'T' + time.replace(':', '') + '00';
+  const addMinutes = (time, mins) => {
+    const [h, m] = time.split(':').map(Number);
+    const t = h * 60 + m + (mins || 0);
+    return `${pad(Math.floor(t / 60) % 24)}:${pad(t % 60)}`;
+  };
+
   const relDue = (iso) => {
     const n = diffDays(todayISO(), iso);
     if (n < 0) return { text: `${-n}d overdue`, cls: 'due-late' };
@@ -67,9 +76,9 @@
   const save = () => { try { localStorage.setItem(LS_STATE, JSON.stringify(state)); } catch (e) { /* storage full/unavailable */ } };
 
   const session = {
-    userId: localStorage.getItem(LS_USER) || 'u2'
+    userId: localStorage.getItem(LS_USER) || null
   };
-  if (!state.users.some((u) => u.id === session.userId)) session.userId = 'u2';
+  if (session.userId && !state.users.some((u) => u.id === session.userId)) session.userId = null;
 
   const getFilters = () => { try { return JSON.parse(sessionStorage.getItem(SS_FILTERS) || '{}'); } catch (e) { return {}; } };
   const setFilters = (f) => { try { sessionStorage.setItem(SS_FILTERS, JSON.stringify(f)); } catch (e) { /* ignore */ } };
@@ -95,9 +104,10 @@
   const auditOf = (p) => state.audit.filter((a) => a.recordType === 'project' && a.recordId === p.id);
   const meetingById = (id) => state.meetings.find((m) => m.id === id);
 
-  const cur = () => userById(session.userId);
+  const cur = () => (session.userId ? userById(session.userId) : null);
   const role = () => cur().role;
 
+  const WORKSPACE = { name: 'Potntial', domain: 'potntial.in' };
   const ROLE_LABEL = { boss: 'Boss', pm: 'Project Manager', hr: 'HR', team: 'Team' };
   const STATUS_META = {
     'draft': { label: 'Draft', cls: 'b-plain' },
@@ -432,7 +442,7 @@
       return `<a class="nav-link" href="#/${k}" ${isCur ? 'aria-current="page"' : ''}>${IC(m.icon, 16)}${m.label}${badgeHTML}</a>`;
     }).join('');
 
-    $('#topbarTitle').textContent = NAV_META[activeKey] ? NAV_META[activeKey].label : 'Project Tracker';
+    $('#topbarTitle').textContent = NAV_META[activeKey] ? NAV_META[activeKey].label : `${WORKSPACE.name} Projects`;
 
     const sel = $('#userSelect');
     sel.innerHTML = state.users.map((u) =>
@@ -444,6 +454,8 @@
   /* ============================== views ============================== */
 
   function render() {
+    if (!cur()) { renderSignIn(); return; }
+    document.body.classList.remove('signed-out');
     if (!location.hash) {
       history.replaceState(null, '', `#/${HOME_BY_ROLE[role()]}`);
     }
@@ -481,6 +493,68 @@
       view.innerHTML = renderDenied(routeKey);
     }
     view.focus({ preventScroll: true });
+  }
+
+  /* ---------- sign-in (workspace gate) ---------- */
+
+  function signInAs(idU, isNew) {
+    session.userId = idU;
+    localStorage.setItem(LS_USER, idU);
+    toast(isNew
+      ? `Welcome, ${cur().name} — you joined the workspace with the Team role.`
+      : `Signed in as ${cur().name} (${ROLE_LABEL[role()]}).`);
+    const target = `#/${HOME_BY_ROLE[role()]}`;
+    if (location.hash !== target) go(target); else render();
+  }
+
+  function renderSignIn() {
+    document.body.classList.add('signed-out');
+    closeModal(); closeDrawer();
+    $('#view').innerHTML = `
+      <div class="signin">
+        <div class="card signin-card">
+          <div class="signin-brand">
+            <span class="brand-mark" aria-hidden="true">${IC('gantt', 17)}</span>
+            <div>
+              <div class="brand-name">${esc(WORKSPACE.name)}</div>
+              <div class="brand-sub">Projects tracker</div>
+            </div>
+          </div>
+          <h1>Sign in to your workspace</h1>
+          <p class="signin-sub">Use your ${esc(WORKSPACE.name)} Google account email. Teammates who aren't in the directory yet join with the Team role.</p>
+          <form id="signinForm" novalidate>
+            ${field('siEmail', 'Work email', `<input type="email" id="siEmail" placeholder="you@${esc(WORKSPACE.domain)}" autocomplete="email" inputmode="email" />`, { req: true })}
+            <button class="btn btn-primary" type="submit" style="width:100%;justify-content:center">Continue</button>
+          </form>
+          <div class="signin-divider"><span>or explore a demo role</span></div>
+          <div class="signin-demos">
+            ${['u1', 'u2', 'u3', 'u5'].map((idU) => {
+              const u = userById(idU);
+              return `<button class="btn btn-sm" data-action="signin-as" data-id="${u.id}">${esc(u.name.split(' ')[0])} — ${ROLE_LABEL[u.role]}</button>`;
+            }).join('')}
+          </div>
+          <p class="signin-note">Demo build: this is a lightweight email gate and your edits stay in this browser. Verified Google sign-in and shared team data come with the hosted version.</p>
+        </div>
+      </div>`;
+    $('#siEmail').focus();
+    $('#signinForm').addEventListener('submit', (e) => {
+      e.preventDefault();
+      clearFieldErrors();
+      const raw = $('#siEmail').value.trim().toLowerCase();
+      if (!raw) return fieldError('siEmail', 'Enter your work email.');
+      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(raw)) return fieldError('siEmail', 'That doesn’t look like an email address.');
+      if (!raw.endsWith('@' + WORKSPACE.domain)) return fieldError('siEmail', `This workspace accepts @${WORKSPACE.domain} emails only.`);
+      let u = state.users.find((x) => (x.email || '').toLowerCase() === raw);
+      const isNew = !u;
+      if (!u) {
+        const nm = raw.split('@')[0].split(/[._-]+/).filter(Boolean)
+          .map((w) => w[0].toUpperCase() + w.slice(1)).join(' ') || 'New Teammate';
+        u = { id: uid(), name: nm, email: raw, role: 'team', dept: 'Production', title: 'Team member', active: true };
+        state.users.push(u);
+        save();
+      }
+      signInAs(u.id, isNew);
+    });
   }
 
   function renderDenied(key) {
@@ -1346,6 +1420,7 @@
       <div class="page-head">
         <div><h1>Calendar</h1><div class="sub">Meetings, milestones and project deadlines</div></div>
         <div class="actions">
+          <button class="btn" data-action="export-ics" title="Download an .ics file and import it into Google Calendar">${IC('download', 14)}Google Calendar (.ics)</button>
           ${role() === 'hr' ? `<button class="btn btn-primary" data-action="new-meeting">${IC('plus', 14)}New meeting</button>` : ''}
         </div>
       </div>
@@ -1413,12 +1488,20 @@
     const proj = m.projectId ? projById(m.projectId) : null;
     const isHR = role() === 'hr';
     const participants = m.participantIds.map(userById).filter(Boolean);
+    const occDate = occurrenceISO || m.date;
+    const gcalURL = 'https://calendar.google.com/calendar/render?action=TEMPLATE'
+      + `&text=${encodeURIComponent(m.title)}`
+      + `&dates=${icsDT(occDate, m.time)}/${icsDT(occDate, addMinutes(m.time, m.durationMin || 30))}`
+      + (m.recurrence === 'weekly' ? `&recur=${encodeURIComponent('RRULE:FREQ=WEEKLY')}` : '')
+      + `&details=${encodeURIComponent(m.agenda || '')}`
+      + `&location=${encodeURIComponent(m.location || '')}`;
     openDrawer(m.title, `
       <div style="display:flex;flex-direction:column;gap:14px">
         <div>
-          <div style="font-size:13px;color:var(--ink-soft)">${fmtY(occurrenceISO || m.date)} · ${esc(m.time)} · ${m.durationMin} min${m.recurrence === 'weekly' ? ' · repeats weekly' : ''}</div>
+          <div style="font-size:13px;color:var(--ink-soft)">${fmtY(occDate)} · ${esc(m.time)} · ${m.durationMin} min${m.recurrence === 'weekly' ? ' · repeats weekly' : ''}</div>
           <div style="font-size:13px;color:var(--ink-soft);margin-top:2px">${esc(m.location || '')}</div>
           ${proj ? `<div style="font-size:13px;margin-top:6px">Linked project: ${role() === 'hr' ? `<b>${esc(proj.name)}</b> <span style="color:var(--ink-mute)">(owner ${esc(userById(proj.ownerId).name)})</span>` : `<a href="#/project/${proj.id}">${esc(proj.name)}</a>`}</div>` : ''}
+          <div style="margin-top:9px"><a class="btn btn-sm" href="${gcalURL}" target="_blank" rel="noopener">${IC('calendar', 13)}Add to Google Calendar</a></div>
         </div>
         ${m.agenda ? `<div><h3 style="font-size:13px;margin-bottom:4px">Agenda</h3><p style="font-size:13px;color:var(--ink-soft)">${esc(m.agenda)}</p></div>` : ''}
         <div>
@@ -1736,8 +1819,19 @@
     'reset-demo': () => confirmDialog('Reset demo data', 'This restores the sample portfolio and removes any changes you made. Nothing else is affected.', 'Reset data', () => {
       localStorage.removeItem(LS_STATE);
       state = window.buildSeed();
+      if (session.userId && !state.users.some((u) => u.id === session.userId)) {
+        session.userId = null;
+        localStorage.removeItem(LS_USER);
+      }
       save(); toast('Demo data reset.'); render();
     }, true),
+
+    'sign-out': () => {
+      session.userId = null;
+      localStorage.removeItem(LS_USER);
+      render();
+    },
+    'signin-as': (d) => signInAs(d.id, false),
 
     'open-project': (d) => go(`#/project/${d.id}`),
     'proj-tab': (d) => go(`#/project/${d.id}?tab=${d.tab}`),
@@ -1984,6 +2078,38 @@
     },
 
     /* calendar & meetings */
+    'export-ics': () => {
+      const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', `PRODID:-//${WORKSPACE.name}//Projects Tracker//EN`, 'CALSCALE:GREGORIAN'];
+      const stamp = todayISO().replace(/-/g, '') + 'T000000Z';
+      state.meetings.filter((m) => !m.cancelled).forEach((m) => {
+        lines.push('BEGIN:VEVENT',
+          `UID:${m.id}@potntial-tracker`, `DTSTAMP:${stamp}`,
+          `DTSTART:${icsDT(m.date, m.time)}`, `DTEND:${icsDT(m.date, addMinutes(m.time, m.durationMin || 30))}`);
+        if (m.recurrence === 'weekly') lines.push('RRULE:FREQ=WEEKLY');
+        lines.push(`SUMMARY:${icsEsc(m.title)}`,
+          `DESCRIPTION:${icsEsc(m.agenda || '')}`, `LOCATION:${icsEsc(m.location || '')}`, 'END:VEVENT');
+      });
+      const projs = role() === 'hr' ? state.projects : visibleProjects();
+      projs.filter(isActiveish).forEach((p) => {
+        milestonesOf(p).filter((ms) => !ms.done).forEach((ms) => {
+          lines.push('BEGIN:VEVENT', `UID:${ms.id}@potntial-tracker`, `DTSTAMP:${stamp}`,
+            `DTSTART;VALUE=DATE:${ms.date.replace(/-/g, '')}`,
+            `SUMMARY:${icsEsc(`Milestone: ${ms.title} — ${p.name}`)}`, 'END:VEVENT');
+        });
+        if (p.timeline.currentEnd) {
+          lines.push('BEGIN:VEVENT', `UID:dl-${p.id}@potntial-tracker`, `DTSTAMP:${stamp}`,
+            `DTSTART;VALUE=DATE:${p.timeline.currentEnd.replace(/-/g, '')}`,
+            `SUMMARY:${icsEsc(`Deadline: ${p.name}`)}`, 'END:VEVENT');
+        }
+      });
+      lines.push('END:VCALENDAR');
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([lines.join('\r\n')], { type: 'text/calendar' }));
+      a.download = 'potntial-projects.ics';
+      a.click();
+      URL.revokeObjectURL(a.href);
+      toast('Calendar exported — import the .ics into Google Calendar.');
+    },
     'cal-nav': (d) => { ui.calCursor = new Date(ui.calCursor.getFullYear(), ui.calCursor.getMonth() + Number(d.n), 1); render(); },
     'cal-today': () => { const t = today(); ui.calCursor = new Date(t.getFullYear(), t.getMonth(), 1); render(); },
     'cal-day': (d) => openDayDrawer(d.iso),

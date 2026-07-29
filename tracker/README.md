@@ -1,6 +1,6 @@
-# Project Tracker — Creative Portfolio
+# Potntial Projects Tracker
 
-A minimal, role-based tracker for creative projects: portfolio dashboard, timelines (Gantt), team progress, meetings and an audit trail. Built as a static, dependency-free web app (`index.html` + `styles.css` + `app.js` + `data.js`) so it runs anywhere — including GitHub Pages.
+A minimal, role-based tracker for Potntial's creative projects: portfolio dashboard, timelines (Gantt), team progress, meetings and an audit trail. Built as a static, dependency-free web app (`index.html` + `styles.css` + `app.js` + `data.js`) so it runs anywhere — including GitHub Pages.
 
 **Open it:** serve the repo (or just this folder) statically and open `tracker/index.html`, e.g.
 
@@ -14,6 +14,7 @@ The app implements the Project Tracker PRD, clubbed and simplified for a static 
 
 | PRD area | In the app |
 |---|---|
+| Sign-in | Workspace email gate: sign in with an `@potntial.in` address. Directory members get their configured role; new teammates auto-join with the Team role. (Client-side demo gate — verified Google OAuth needs the hosted version, see below.) |
 | Roles & permissions | "Viewing as" switcher (Boss / Project Manager / HR / Team). Controls and navigation are hidden or read-only per role. |
 | Lifecycle | Draft → Submitted → Approved → In progress → Completed, plus Return, Reject, On hold, Reopen, Duplicate-to-draft. |
 | Timeline rules | Submission locks proposed dates; approval creates the baseline; only the PM changes committed dates, and every change requires a reason recorded in the audit history. |
@@ -23,6 +24,7 @@ The app implements the Project Tracker PRD, clubbed and simplified for a static 
 | Project detail | Four tabs — Overview, Tasks, Timeline, Activity — with milestones, blockers, next actions, dependencies, comments with @mentions. |
 | Gantt | Day/Week/Month zoom, baseline-vs-current bars, critical tasks and milestones highlighted, today line; editing only for the PM. |
 | Calendar | Month grid with meetings (incl. weekly recurrence), milestones and deadlines; HR manages meetings, attendance, notes and follow-up actions (which become tasks only after PM approval). |
+| Google Calendar | Per-meeting "Add to Google Calendar" links (with weekly recurrence), plus a one-click `.ics` export of all meetings, milestones and deadlines for import into Google Calendar. |
 | Notifications | Unread-first feed per user with deep links (submissions, approvals, blockers, date changes, mentions, meetings, overdue work). |
 | Audit | Immutable in-app log of approvals, status changes and every committed-date change (actor, timestamp, old → new, reason). |
 
@@ -31,5 +33,15 @@ Data is seeded with sample creative projects (avatars, wearables, animation, web
 ## Deliberately out of scope (per PRD MVP boundary, plus static-demo constraints)
 
 - Real authentication, server-side permission enforcement, email delivery — this is a client-only demo; the PRD requires all permissions to be re-checked server-side in a real build.
-- Payroll/finance/chat/document management, external calendar sync, templates, capacity planning, native mobile.
+- Payroll/finance/chat/document management, templates, capacity planning, native mobile.
 - Drag-to-reschedule on the Gantt — date changes go through an explicit dialog because a reason is mandatory anyway.
+
+## Upgrading to real Google sign-in & live calendar sync
+
+The current sign-in is a client-side email gate and data lives per-browser in `localStorage`. For verified Google accounts and shared team data, host the app (any static host) and add a small backend — Firebase is the shortest path:
+
+1. **Auth**: Firebase Authentication with the Google provider, restricted to the `potntial.in` hosted domain (`hd` claim check server-side).
+2. **Shared state**: move `state` reads/writes from `localStorage` into Firestore with security rules mirroring the role matrix in `app.js` (`NAV_BY_ROLE`, `canEditProgress`, etc.).
+3. **Live Google Calendar**: with OAuth scope `calendar.readonly`, pull events via the Google Calendar API into the Calendar view; meetings created here can be pushed with `calendar.events`. Requires a Google Cloud OAuth client ID owned by the Potntial workspace.
+
+Until then, the `.ics` export and per-meeting "Add to Google Calendar" links cover one-way calendar flow with no credentials needed.
